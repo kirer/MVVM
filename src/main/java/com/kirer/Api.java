@@ -27,33 +27,29 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class Api {
 
-    public static final String BASE_URL = "https://leancloud.cn:443/1.1/";
     public static final int DEFAULT_TIMEOUT = 5;
 
     private final Gson mGsonDateFormat;
     private final OkHttpClient okHttpClient;
-    private Interceptor mInterceptor = new Interceptor() {
-        @Override
-        public Response intercept(Interceptor.Chain chain) throws IOException {
-            Request request = chain.request()
-                    .newBuilder()
-                    .addHeader("Content-Type", "application/json")
-                    .build();
-            return chain.proceed(request);
-        }
-    };
 
     private Api() {
         mGsonDateFormat = new GsonBuilder().setDateFormat("yyyy-MM-dd hh:mm:ss").create();
-        HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
-        interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
         File cacheFile = new File(K.getInstance().getAppContext().getCacheDir(), "cache");
         Cache cache = new Cache(cacheFile, 1024 * 1024 * 100); //100Mb
         okHttpClient = new OkHttpClient.Builder()
                 .readTimeout(DEFAULT_TIMEOUT, TimeUnit.SECONDS)
                 .connectTimeout(DEFAULT_TIMEOUT, TimeUnit.SECONDS)
-                .addInterceptor(interceptor)
-                .addInterceptor(mInterceptor)
+                .addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+                .addInterceptor(new Interceptor() {
+                    @Override
+                    public Response intercept(Interceptor.Chain chain) throws IOException {
+                        Request request = chain.request()
+                                .newBuilder()
+                                .addHeader("Content-Type", "application/json")
+                                .build();
+                        return chain.proceed(request);
+                    }
+                })
                 .addNetworkInterceptor(new HttpCacheInterceptor())
                 .cache(cache)
                 .build();
@@ -76,7 +72,7 @@ public class Api {
      */
     public <S> S create(Class<S> serviceClass) {
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(BASE_URL)
+                .baseUrl("")
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create(mGsonDateFormat))
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
